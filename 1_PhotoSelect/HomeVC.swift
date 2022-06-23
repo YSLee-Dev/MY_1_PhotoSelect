@@ -22,6 +22,8 @@ class HomeVC : UICollectionViewController {
     }()
     
     var photoList : [UIImage] = []
+    var add = UIBarButtonItem()
+    var reload = UIBarButtonItem()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -31,11 +33,50 @@ class HomeVC : UICollectionViewController {
     private func viewSet(){
         self.title = "사진 선택기"
         self.navigationController?.navigationBar.prefersLargeTitles = true
-        self.navigationItem.setRightBarButton(UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(clickAddPhoto(_:))), animated: true)
+        self.add = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(clickAddPhoto(_:)))
+        self.reload = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(clickReloadPhoto(_:)))
+        
+        self.collectionView.register(PhotoCell.self, forCellWithReuseIdentifier: "PhotoCell")
+        self.navigationItem.setRightBarButton(self.add, animated: true)
+        self.collectionView.collectionViewLayout = createLayout()
     }
     
     @objc private func clickAddPhoto(_ sender:Any){
         self.present(self.picker, animated: true)
+    }
+    
+    @objc private func clickReloadPhoto(_ sender:Any){
+        self.collectionView.reloadData()
+    }
+    
+    private func createLayout() -> UICollectionViewLayout {
+        return UICollectionViewCompositionalLayout { [weak self] sectionNumber, Environment -> NSCollectionLayoutSection? in
+            if sectionNumber == 0{
+                return self?.largePhotoLayout()
+            }else{
+                return self?.normalPhotoLayout()
+            }
+        }
+    }
+    
+    private func largePhotoLayout() -> NSCollectionLayoutSection{
+        let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .fractionalWidth(1.0))
+        let item = NSCollectionLayoutItem(layoutSize: itemSize)
+        
+        let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .fractionalWidth(1.0))
+        let group = NSCollectionLayoutGroup.vertical(layoutSize: groupSize, subitem: item, count: 1)
+        
+        return NSCollectionLayoutSection(group: group)
+    }
+    
+    private func normalPhotoLayout() -> NSCollectionLayoutSection{
+        let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .fractionalWidth(1.0))
+        let item = NSCollectionLayoutItem(layoutSize: itemSize)
+        
+        let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(0.2), heightDimension: .fractionalWidth(1.0))
+        let group = NSCollectionLayoutGroup.vertical(layoutSize: groupSize, subitem: item, count: 5)
+        
+        return NSCollectionLayoutSection(group: group)
     }
 }
 
@@ -58,10 +99,10 @@ extension HomeVC : PHPickerViewControllerDelegate{
                         guard let self = self else {return}
                         guard let UiImage = image as? UIImage else {return}
                         self.photoList.append(UiImage)
-                        print(self.photoList)
                     }
                 }
             }
+            self.navigationItem.setRightBarButton(self.reload, animated: true)
         }
     }
 }
