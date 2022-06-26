@@ -22,6 +22,7 @@ class HomeVC : UICollectionViewController {
     }()
     
     var photoList : [UIImage] = []
+    var bestList : [UIImage] = []
     var add = UIBarButtonItem()
     var reload = UIBarButtonItem()
     
@@ -47,34 +48,45 @@ class HomeVC : UICollectionViewController {
     
     @objc private func clickReloadPhoto(_ sender:Any){
         self.collectionView.reloadData()
+        print(photoList)
+    
     }
     
     private func createLayout() -> UICollectionViewLayout {
         return UICollectionViewCompositionalLayout { [weak self] sectionNumber, Environment -> NSCollectionLayoutSection? in
-            if sectionNumber == 0{
-                return self?.largePhotoLayout()
+            let group = NSCollectionLayoutGroup(layoutSize: NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .fractionalHeight(1)))
+            guard let self = self else {return NSCollectionLayoutSection(group: group)}
+            
+            if self.bestList.isEmpty{
+                return self.normalPhotoLayout()
             }else{
-                return self?.normalPhotoLayout()
+                if sectionNumber == 0{
+                    return self.largePhotoLayout()
+                }else{
+                    return self.normalPhotoLayout()
+                }
             }
         }
     }
     
     private func largePhotoLayout() -> NSCollectionLayoutSection{
-        let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .fractionalWidth(1.0))
+        let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(0.47), heightDimension: .fractionalWidth(0.47))
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
+        item.contentInsets = .init(top: 5, leading: 5, bottom: 5, trailing: 5)
         
-        let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .fractionalWidth(1.0))
-        let group = NSCollectionLayoutGroup.vertical(layoutSize: groupSize, subitem: item, count: 1)
+        let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .fractionalWidth(0.47))
+        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitem: item, count: 2)
         
         return NSCollectionLayoutSection(group: group)
     }
     
     private func normalPhotoLayout() -> NSCollectionLayoutSection{
-        let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .fractionalWidth(1.0))
+        let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(0.23), heightDimension: .fractionalWidth(0.23))
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
+        item.contentInsets = .init(top: 5, leading: 5, bottom: 5, trailing: 5)
         
-        let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(0.2), heightDimension: .fractionalWidth(1.0))
-        let group = NSCollectionLayoutGroup.vertical(layoutSize: groupSize, subitem: item, count: 5)
+        let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .fractionalWidth(0.23))
+        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitem: item, count: 4)
         
         return NSCollectionLayoutSection(group: group)
     }
@@ -103,6 +115,67 @@ extension HomeVC : PHPickerViewControllerDelegate{
                 }
             }
             self.navigationItem.setRightBarButton(self.reload, animated: true)
+        }
+    }
+}
+
+// 컬렉션 뷰
+extension HomeVC{
+    override func numberOfSections(in collectionView: UICollectionView) -> Int {
+        if self.bestList.isEmpty {
+            return 1
+        }else{
+            return 2
+        }
+    }
+    override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        if self.bestList.isEmpty{
+            return self.photoList.count
+        }else{
+            switch section{
+            case 0:
+                return self.bestList.count
+            default:
+                return self.photoList.count
+            }
+        }
+    }
+    
+    override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PhotoCell", for: indexPath) as? PhotoCell else {
+            return UICollectionViewCell()}
+        if !self.bestList.isEmpty && indexPath.section == 0{
+            cell.photo.image = self.bestList[indexPath.row]
+            return cell
+        }else if self.bestList.isEmpty || indexPath.section != 0{
+            cell.photo.image = self.photoList[indexPath.row]
+            return cell
+        }else{
+            return cell
+        }
+    }
+    
+    override func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        // 대표사진 선택 불가하게
+        if !(!self.bestList.isEmpty && indexPath.section == 0){
+            // 대표사진 선택
+            let alert = UIAlertController(title: "클릭한 사진을 대표사진으로 설정하시겠습니까? (최대 2개)", message: nil, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "확인", style: .cancel){ [weak self] _ in
+                guard let self = self else {return}
+                // 2개 이상일 시 맨 앞 항목은 다시 기본 셀로 복구
+                if self.bestList.count != 2{
+                    self.bestList.append(self.photoList[indexPath.row])
+                    self.photoList.remove(at: indexPath.row)
+                }else{
+                    self.photoList.append(self.bestList.first ?? UIImage())
+                    self.bestList.removeFirst()
+                    self.bestList.append(self.photoList[indexPath.row])
+                    self.photoList.remove(at: indexPath.row)
+                }
+                self.collectionView.reloadData()
+            })
+            alert.addAction(UIAlertAction(title: "취소", style: .default))
+            self.present(alert, animated: true)
         }
     }
 }
